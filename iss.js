@@ -1,16 +1,10 @@
-/**
- * Makes a single API request to retrieve the user's IP address.
- * Input:
- *   - A callback (to pass back an error or the IP string)
- * Returns (via Callback):
- *   - An error, if any (nullable)
- *   - The IP address as a string (null if error). Example: "162.245.144.188"
- */
 const request = require("request");
 
 const urlIP = "https://api.ipify.org?format=json";
 let urlCoords = "http://ipwho.is/";
-
+let ipAddress = "";
+let coordinates = {};
+let flyOverTimes = {};
 
 
 const fetchMyIP = function(callback) {
@@ -29,15 +23,15 @@ const fetchMyIP = function(callback) {
     }
 
     const data = JSON.parse(body);
+    ipAddress = data.ip;
     callback(null, data.ip);
-    return data;
   });
 };
 
 const fetchCoordsByIP = function(ip, callback) {
   request(urlCoords += ip, (error, response, body) => {
     if (error) {
-      callback("Your IP request has failed!", null, null);
+      callback("Your IP request has failed!", null);
       return;
     }
 
@@ -48,12 +42,28 @@ const fetchCoordsByIP = function(ip, callback) {
       callback(Error(message), null);
       return;
     }
-    let coords = { latitude: parsedBody.latitude, longitude: parsedBody.longitude };
-
-    console.log(coords);
-    callback(null, coords);
-    return;
+    coordinates = { latitude: parsedBody.latitude, longitude: parsedBody.longitude };
+    console.log(coordinates);
+    callback(null, coordinates);
   });
 };
 
-module.exports = { fetchMyIP, fetchCoordsByIP };
+const fetchISSFlyOverTimes = function(coords, callback) {
+  request(`https://iss-flyover.herokuapp.com/json/?lat=${coords.latitude}&lon=${coords.longitude}`, (error, response, body) => {
+
+    if (error) {
+      callback("Flyover times denied. CSIS has been notified.", null);
+      return;
+    }
+
+    if (response.statusCode !== 200) {
+      const msg = `Status Code ${response.statusCode} when fetching ISS flyover coordinates. Response: ${body}`;
+      callback(Error(msg), null);
+      return;
+    }
+    flyOverTimes = JSON.parse(body);
+    console.log(flyOverTimes);
+    callback(null, flyOverTimes);
+  });
+};
+module.exports = { fetchMyIP, fetchCoordsByIP, fetchISSFlyOverTimes };
